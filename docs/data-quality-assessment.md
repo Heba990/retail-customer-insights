@@ -54,7 +54,26 @@ Identified via unique values in the `StockCode` filter (not by guessing keywords
 
 **Open question (documented for later investigation):** Why does `DOT` (Dotcom Postage) never appear with negative quantity, unlike `POST`? Hypothesis: dotcom/online channel sales may follow a different return-handling process than regular sales. To be investigated further, not yet confirmed.
 
-**Decision:** These are administrative/fee codes, not real products. They must be excluded from product-level analysis (e.g. best-selling items) but may need separate handling in revenue reconciliation.
+**Decision:** These are administrative/fee codes, not real products. They will be retained in the same sheet (`Year 2010-2011`) with a new `IsProduct` boolean column (`TRUE`/`FALSE`) added to exclude them during product-level analysis. They will NOT be deleted or moved to a separate sheet, in order to preserve the ability to reference them later (particularly `DOT`, which remains under investigation — see open question above).
+
+## 4.1 Deferred Investigation: Anomalous Pricing (`PADS`)
+
+While filtering non-product StockCodes, `PADS` (Description: "PADS TO MATCH ALL CUSHIONS") was found with 4 rows, all Quantity = 1 (positive), but Price near zero (0.001, 0.001, 0, 0.001). This is a real product, NOT an administrative code — it was excluded from the `IsProduct` lookup table. However, the near-zero pricing is anomalous and requires further investigation in the Python phase (e.g., comparing against other invoices of the same StockCode across both years to determine if this is a promotional giveaway or a data entry error).
+
+## 4.2 Note: `AMAZONFEE` Not Present in Cleaned Data
+
+The `AMAZONFEE` code (34 rows documented in Phase 1, calculated on the raw 541,909-row dataset) does not appear anywhere in the cleaned `Year 2010-2011` sheet or the `CANCELLATIONS` sheet (verified via `COUNTIF`, result = 0 in both). This is consistent with `AMAZONFEE` rows having blank `Customer ID` values, which were removed during the first cleaning step (135,080 rows deleted). It remains in the `IsProduct` lookup table for completeness and documentation traceability, even though it currently matches zero rows.
+
+## 4.3 LOOKUP_TABLES Sheet & Final Verification of `IsProduct`
+
+**Decision:** The 9 administrative StockCodes were moved from being hardcoded inside the `IsProduct` formula into a dedicated sheet, `LOOKUP_TABLES`. This makes the logic easier to maintain and audit — updating or reviewing the list no longer requires editing the formula itself.
+
+**Verification method:** The `IsProduct` column was validated using two independent formulas:
+
+1. `=COUNTIF(I:I,FALSE)` — counts rows flagged as non-product directly from the `IsProduct` column → result: **1551**
+2. `=SUMPRODUCT(COUNTIF(B2:B397924,LOOKUP_TABLES!A2:A10))` — counts rows matching the 9 administrative codes directly from `StockCode`, independent of the `IsProduct` logic → result: **1551**
+
+**Result:** Both methods returned the same count (1551), confirming the `IsProduct` column is internally consistent with the `LOOKUP_TABLES` reference list. This does not guarantee zero errors elsewhere in the sheet, but it confirms the flagging logic is working correctly for the documented administrative codes.
 
 ---
 
